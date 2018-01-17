@@ -517,6 +517,7 @@ def load_buildinfo(path, variant):
     # Fill in default / guaranteed members so code everywhere doesn't have to guard around it.
     if is_windows:
         buildinfo.setdefault('build_script', 'build.ps1')
+        buildinfo.setdefault('docker', 'dcos/dcos-builder:dcos-builder_dockerdir-latest')
     else:
         buildinfo.setdefault('build_script', 'build')
         buildinfo.setdefault('docker', 'dcos/dcos-builder:dcos-builder_dockerdir-latest')
@@ -1231,12 +1232,12 @@ def _build(package_store, name, variant, clean_after_build, recursive):
     # Source we checked out
     cmd.volumes.update({
         # TODO(cmaloney): src should be read only...
-        cache_abs("src"): "/pkg/src:rw",
+        cache_abs("src"): "c:/pkg/src:rw",
         # The build script
-        build_script: "/pkg/build:ro",
+        build_script: "c:/pkg/build.ps1:ro",
         # Getting the result out
-        cache_abs("result"): "/opt/mesosphere/packages/{}:rw".format(pkg_id),
-        install_dir: "/opt/mesosphere:ro"
+        cache_abs("result"): "c:/opt/mesosphere/packages/{}:rw".format(pkg_id),
+        install_dir: "c:/opt/mesosphere:ro"
     })
 
     if os.path.exists(extra_dir):
@@ -1246,7 +1247,7 @@ def _build(package_store, name, variant, clean_after_build, recursive):
         "PKG_VERSION": version,
         "PKG_NAME": name,
         "PKG_ID": pkg_id,
-        "PKG_PATH": "/opt/mesosphere/packages/{}".format(pkg_id),
+        "PKG_PATH": "c:/opt/mesosphere/packages/{}".format(pkg_id),
         "PKG_VARIANT": variant if variant is not None else "<default>",
         "NUM_CORES": multiprocessing.cpu_count()
     }
@@ -1260,7 +1261,9 @@ def _build(package_store, name, variant, clean_after_build, recursive):
             cmd.run("package-builder", [
              "powershell.exe",
              "-file",
-             package_dir + "\\build.ps1"])
+             package_dir + "\\build.ps1",
+             cache_abs("src"),
+             cache_abs("result")])
         else:
             cmd.run("package-builder", [
              "/bin/bash",
